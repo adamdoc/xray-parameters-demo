@@ -4,7 +4,7 @@ An interactive, single-file web demo showing how three key parameters of a
 projection X-ray setup shape the recorded image. Everything runs client-side in
 a single `index.html` — no build step, no dependencies.
 
-**Live demo:** _(add your GitHub Pages URL here once published)_
+**Live demo:** https://adamdoc.github.io/xray-parameters-demo/
 
 ## What it shows
 
