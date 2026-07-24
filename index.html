@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>X-ray Imaging Parameters — Interactive Demo</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c232d; --line:#2a3441;
+    --text:#e6edf3; --muted:#8b949e; --amber:#f0a72c; --teal:#3fb6c4;
+    --violet:#a371f7; --accent:#58a6ff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:radial-gradient(1200px 600px at 50% -10%, #16202c, var(--bg));
+    color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:28px 20px 60px; line-height:1.5;
+  }
+  .wrap{max-width:1080px; margin:0 auto}
+  h1{font-size:24px; margin:0 0 4px; letter-spacing:.2px}
+  .sub{color:var(--muted); font-size:14px; margin:0 0 22px; max-width:760px}
+  .stage{display:grid; grid-template-columns:1fr 1fr; gap:18px}
+  @media (max-width:880px){ .stage{grid-template-columns:1fr} }
+  .card{
+    background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--line); border-radius:14px; padding:14px 14px 10px;
+  }
+  .card h2{font-size:13px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin:0 0 10px; font-weight:600}
+  canvas{display:block; width:100%; height:auto; border-radius:8px; background:#0a0e13}
+  .controls{
+    margin-top:18px; background:linear-gradient(180deg,var(--panel),var(--panel2));
+    border:1px solid var(--line); border-radius:14px; padding:18px 20px;
+  }
+  .ctrl{margin-bottom:20px}
+  .ctrl:last-child{margin-bottom:0}
+  .ctrl .lab{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px}
+  .ctrl .name{font-weight:600; font-size:15px}
+  .ctrl .name .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:8px; vertical-align:middle}
+  .ctrl .val{font-variant-numeric:tabular-nums; color:var(--text); font-size:14px; background:#0c1117; border:1px solid var(--line); padding:2px 9px; border-radius:6px}
+  .ctrl .hint{color:var(--muted); font-size:12.5px; margin-top:7px}
+  input[type=range]{-webkit-appearance:none; width:100%; height:6px; border-radius:6px; background:#0c1117; border:1px solid var(--line); outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:var(--amber); border:3px solid #1a1300; cursor:pointer; box-shadow:0 0 0 1px #00000055}
+  input[type=range].teal::-webkit-slider-thumb{background:var(--teal); border-color:#031416}
+  input[type=range].violet::-webkit-slider-thumb{background:var(--violet); border-color:#160a2b}
+  input[type=range].teal::-moz-range-thumb{background:var(--teal)}
+  input[type=range].violet::-moz-range-thumb{background:var(--violet)}
+  input[type=range]::-moz-range-thumb{width:18px;height:18px;border:3px solid #1a1300;border-radius:50%;background:var(--amber);cursor:pointer}
+  .presets{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px}
+  .presets button{
+    background:#0c1117; color:var(--text); border:1px solid var(--line); border-radius:8px;
+    padding:7px 12px; font-size:12.5px; cursor:pointer; transition:.15s;
+  }
+  .presets button:hover{border-color:var(--accent); color:#fff}
+  .readout{
+    margin-top:18px; display:grid; grid-template-columns:repeat(4,1fr); gap:12px;
+  }
+  @media (max-width:880px){ .readout{grid-template-columns:repeat(2,1fr)} }
+  .stat{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line); border-radius:12px; padding:12px 14px}
+  .stat .k{color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.6px}
+  .stat .v{font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; margin-top:2px}
+  .stat .v small{font-size:12px; font-weight:500; color:var(--muted)}
+  .summary{margin-top:14px; background:#0c1117; border:1px solid var(--line); border-left:3px solid var(--amber); border-radius:8px; padding:12px 15px; font-size:14px; color:var(--text)}
+  .legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; color:var(--muted); font-size:12px}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .sw{width:12px; height:12px; border-radius:3px; display:inline-block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>X-ray Imaging: how the setup shapes the picture</h1>
+  <p class="sub">A top-down view of a simple projection X-ray setup — source on the left, sample in the middle, detector on the right. Drag the three sliders and watch how the recorded image on the detector changes. Each parameter has its own trade-off.</p>
+
+  <div class="stage">
+    <div class="card">
+      <h2>The setup — view from above</h2>
+      <canvas id="setup" width="500" height="420"></canvas>
+      <div class="legend">
+        <span><i class="sw" style="background:#f0a72c"></i>source</span>
+        <span><i class="sw" style="background:#3fb6c4"></i>sample</span>
+        <span><i class="sw" style="background:#5a6572"></i>detector</span>
+        <span><i class="sw" style="background:rgba(240,167,44,.28)"></i>beam</span>
+        <span><i class="sw" style="background:rgba(240,120,60,.6)"></i>penumbra (blur)</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Detector image — what you'd record</h2>
+      <canvas id="proj" width="400" height="420"></canvas>
+      <div class="legend"><span>A small test object: resolution bars (top) + graded circles (bottom).</span></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl">
+      <div class="lab">
+        <span class="name"><span class="dot" style="background:var(--amber)"></span>Source size <span style="color:var(--muted);font-weight:400">(focal spot)</span></span>
+        <span class="val" id="fVal">1.2 mm</span>
+      </div>
+      <input type="range" id="fRange" min="0.2" max="6" step="0.05" value="1.2">
+      <div class="hint">Smaller spot → <b>sharper</b> edges, but fewer photons → <b>darker &amp; noisier</b>. Larger spot → brighter &amp; cleaner, but geometric <b>blur</b> creeps in.</div>
+    </div>
+    <div class="ctrl">
+      <div class="lab">
+        <span class="name"><span class="dot" style="background:var(--teal)"></span>Source-to-sample distance</span>
+        <span class="val" id="sodVal">45 cm</span>
+      </div>
+      <input type="range" id="sodRange" class="teal" min="20" max="90" step="1" value="45">
+      <div class="hint">Detector stays fixed at 100&nbsp;cm. Moving the sample <b>closer to the source</b> → higher <b>magnification</b>, but the penumbra grows so the image also <b>blurs</b>.</div>
+    </div>
+    <div class="ctrl">
+      <div class="lab">
+        <span class="name"><span class="dot" style="background:var(--violet)"></span>Exposure / dose <span style="color:var(--muted);font-weight:400">(tube current × time, mAs)</span></span>
+        <span class="val" id="eVal">8.0 mAs</span>
+      </div>
+      <input type="range" id="eRange" class="violet" min="0.5" max="20" step="0.1" value="8">
+      <div class="hint">More photons → <b>brighter &amp; cleaner</b> (noise falls as 1/√photons) — but every photon is <b>dose</b> delivered to the sample. Too much and the image <b>burns out</b>. Doesn't affect sharpness or magnification.</div>
+    </div>
+    <div class="presets">
+      <button data-f="0.3" data-sod="45" data-e="3.5">Microfocus — sharp but noisy</button>
+      <button data-f="5.5" data-sod="45" data-e="8">Large focus — bright but blurry</button>
+      <button data-f="1.0" data-sod="24" data-e="8">High magnification</button>
+      <button data-f="1.0" data-sod="88" data-e="8">Contact (≈1× mag)</button>
+      <button data-f="1.5" data-sod="45" data-e="1.5">Low dose — grainy</button>
+      <button data-f="1.5" data-sod="45" data-e="17">High dose — clean</button>
+    </div>
+  </div>
+
+  <div class="readout">
+    <div class="stat"><div class="k">Magnification</div><div class="v" id="magV">2.2<small>×</small></div></div>
+    <div class="stat"><div class="k">Geometric blur</div><div class="v" id="blurV">1.5<small> mm</small></div></div>
+    <div class="stat"><div class="k">Relative dose</div><div class="v" id="doseV">100<small>%</small></div></div>
+    <div class="stat"><div class="k">Image noise</div><div class="v" id="noiseV">Medium</div></div>
+  </div>
+  <div class="summary" id="summary"></div>
+</div>
+
+<script>
+(() => {
+  // ---- fixed geometry ----
+  const SDD = 100;              // source-to-detector distance (cm), fixed
+  const fMin = 0.2, fMax = 6;   // focal spot range (mm)
+  const Eref = 8;               // reference "correct" exposure (mAs)
+  const dScale = 1.55;          // detector display: px per object-mm at 1x
+
+  // ---- state ----
+  let f = 1.2;    // focal spot size (mm)
+  let SOD = 45;   // source-to-object distance (cm)
+  let E = 8;      // exposure / dose (mAs)
+
+  // ---- elements ----
+  const fRange = document.getElementById('fRange');
+  const sodRange = document.getElementById('sodRange');
+  const eRange = document.getElementById('eRange');
+  const fVal = document.getElementById('fVal');
+  const sodVal = document.getElementById('sodVal');
+  const eVal = document.getElementById('eVal');
+
+  const setup = document.getElementById('setup');
+  const sctx = setup.getContext('2d');
+  const proj = document.getElementById('proj');
+  const pctx = proj.getContext('2d');
+
+  const crisp = document.createElement('canvas');
+  crisp.width = proj.width; crisp.height = proj.height;
+  const cctx = crisp.getContext('2d');
+
+  // ---- helpers ----
+  function roundRect(ctx, x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y, x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x, y+h, r);
+    ctx.arcTo(x, y+h, x, y, r);
+    ctx.arcTo(x, y, x+w, y, r);
+    ctx.closePath();
+  }
+  let spare = null;
+  function gauss(){
+    if (spare !== null){ const s = spare; spare = null; return s; }
+    let u=0,v=0,s=0;
+    do { u = Math.random()*2-1; v = Math.random()*2-1; s = u*u+v*v; } while (s>=1 || s===0);
+    const m = Math.sqrt(-2*Math.log(s)/s);
+    spare = v*m; return u*m;
+  }
+
+  // ---- the test object (drawn in object-local mm, centred on 0,0) ----
+  function drawPhantom(ctx, scale){
+    const cx = proj.width/2, cy = proj.height/2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(scale, scale);
+
+    // holder outline
+    ctx.lineWidth = 2.2/scale;
+    ctx.strokeStyle = 'rgba(12,12,18,0.5)';
+    roundRect(ctx, -46, -46, 92, 92, 9); ctx.stroke();
+
+    // resolution bars (top half) — decreasing width & pitch
+    ctx.fillStyle = 'rgba(8,8,14,0.94)';
+    const widths = [6, 4.2, 2.8, 1.8, 1.1];
+    let x = -24;
+    for (const w of widths){
+      ctx.fillRect(x, -36, w, 30);
+      x += w * 2;                 // bar + equal gap (line pairs)
+    }
+
+    // graded circles (bottom half)
+    ctx.fillStyle = 'rgba(6,6,12,0.92)';
+    const circ = [[-22, 22, 9], [0, 24, 5.5], [18, 22, 3]];
+    for (const [ccx, ccy, r] of circ){
+      ctx.beginPath(); ctx.arc(ccx, ccy, r, 0, Math.PI*2); ctx.fill();
+    }
+    // fine diagonal wire (a hard test for sharpness)
+    ctx.strokeStyle = 'rgba(6,6,12,0.9)';
+    ctx.lineWidth = 1.1/scale;
+    ctx.beginPath(); ctx.moveTo(-30, 40); ctx.lineTo(30, 6); ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // ---- render the detector image ----
+  function renderProjection(M, brightness, sigma, blurPx){
+    const W = proj.width, H = proj.height;
+
+    cctx.clearRect(0,0,W,H);
+    drawPhantom(cctx, M*dScale);
+
+    pctx.save();
+    pctx.fillStyle = 'rgb(234,234,236)';       // bright, fully-exposed field
+    pctx.fillRect(0,0,W,H);
+    pctx.filter = 'blur(' + blurPx.toFixed(2) + 'px)';
+    pctx.drawImage(crisp, 0, 0);               // soft-edged shadow of the object
+    pctx.filter = 'none';
+    pctx.restore();
+
+    const img = pctx.getImageData(0,0,W,H);
+    const d = img.data;
+    for (let i=0;i<d.length;i+=4){
+      let g = d[i]*brightness + gauss()*sigma;
+      g = g<0?0:(g>255?255:g);
+      d[i]=d[i+1]=d[i+2]=g;
+    }
+    pctx.putImageData(img,0,0);
+  }
+
+  // ---- render the top-down schematic ----
+  function drawSetup(M, glow){
+    const W = setup.width, H = setup.height, cy = H/2;
+    const srcX = 66, detX = 470;
+    const span = detX - srcX;
+    const ox = srcX + (SOD/SDD)*span;
+
+    const srcH = 4 + (f/fMax)*74;      // source height grows with focal spot
+    const objHalf = 30;
+    const syT = cy - srcH/2, syB = cy + srcH/2;
+    const oyT = cy - objHalf, oyB = cy + objHalf;
+    const proj = (sy, oy) => sy + (oy - sy)*M;
+
+    // detector-plane shadow boundaries
+    const pTa = proj(syT, oyT), pTb = proj(syB, oyT);
+    const pBa = proj(syT, oyB), pBb = proj(syB, oyB);
+    const outerT = Math.min(pTa,pTb), innerT = Math.max(pTa,pTb);
+    const innerB = Math.min(pBa,pBb), outerB = Math.max(pBa,pBb);
+
+    sctx.clearRect(0,0,W,H);
+    // backdrop
+    sctx.fillStyle = '#0a0e13'; sctx.fillRect(0,0,W,H);
+
+    // optical axis
+    sctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    sctx.setLineDash([4,5]); sctx.lineWidth = 1;
+    sctx.beginPath(); sctx.moveTo(srcX, cy); sctx.lineTo(detX+18, cy); sctx.stroke();
+    sctx.setLineDash([]);
+
+    // beam cone (source edges → outer shadow edges)
+    sctx.beginPath();
+    sctx.moveTo(srcX, syT); sctx.lineTo(detX, outerT);
+    sctx.lineTo(detX, outerB); sctx.lineTo(srcX, syB); sctx.closePath();
+    sctx.fillStyle = 'rgba(240,167,44,'+(0.05 + 0.15*glow).toFixed(3)+')'; sctx.fill();
+
+    // penumbra rays (source edges through object top & bottom)
+    sctx.strokeStyle = 'rgba(240,150,80,0.5)'; sctx.lineWidth = 1;
+    [[syT,oyT,pTa],[syB,oyT,pTb],[syT,oyB,pBa],[syB,oyB,pBb]].forEach(([sy,oy,py])=>{
+      sctx.beginPath(); sctx.moveTo(srcX, sy); sctx.lineTo(ox, oy); sctx.lineTo(detX, py); sctx.stroke();
+    });
+    // chief rays (geometric magnified size)
+    sctx.strokeStyle = 'rgba(63,182,196,0.7)'; sctx.setLineDash([3,4]);
+    [oyT, oyB].forEach(oy=>{
+      const py = proj(cy, oy);
+      sctx.beginPath(); sctx.moveTo(srcX, cy); sctx.lineTo(ox, oy); sctx.lineTo(detX, py); sctx.stroke();
+    });
+    sctx.setLineDash([]);
+
+    // ---- detector panel ----
+    sctx.fillStyle = '#5a6572';
+    sctx.fillRect(detX, cy-150, 10, 300);
+    sctx.fillStyle = 'rgba(0,0,0,0.25)';
+    sctx.fillRect(detX, cy-150, 3, 300);
+    // shadow on the detector: penumbra (soft) + umbra (solid)
+    let gTop = sctx.createLinearGradient(0, outerT, 0, innerT);
+    gTop.addColorStop(0,'rgba(230,120,60,0.0)'); gTop.addColorStop(1,'rgba(20,20,25,0.85)');
+    sctx.fillStyle = gTop; sctx.fillRect(detX-1, outerT, 12, innerT-outerT);
+    sctx.fillStyle = 'rgba(15,15,20,0.9)'; sctx.fillRect(detX-1, innerT, 12, innerB-innerT);
+    let gBot = sctx.createLinearGradient(0, innerB, 0, outerB);
+    gBot.addColorStop(0,'rgba(20,20,25,0.85)'); gBot.addColorStop(1,'rgba(230,120,60,0.0)');
+    sctx.fillStyle = gBot; sctx.fillRect(detX-1, innerB, 12, outerB-innerB);
+
+    // ---- source ----
+    const gs = sctx.createRadialGradient(srcX, cy, 1, srcX, cy, Math.max(srcH,14));
+    gs.addColorStop(0, 'rgba(255,236,170,'+(0.3+0.55*glow).toFixed(3)+')');
+    gs.addColorStop(1, 'rgba(240,167,44,0)');
+    sctx.fillStyle = gs; sctx.beginPath(); sctx.arc(srcX, cy, Math.max(srcH,14), 0, Math.PI*2); sctx.fill();
+    sctx.fillStyle = '#f0a72c';
+    roundRect(sctx, srcX-6, syT, 12, srcH, 4); sctx.fill();
+
+    // ---- object ----
+    sctx.fillStyle = '#3fb6c4';
+    roundRect(sctx, ox-8, oyT, 16, objHalf*2, 4); sctx.fill();
+    sctx.fillStyle = 'rgba(0,0,0,0.35)';
+    for (let k=-2;k<=2;k++){ sctx.fillRect(ox-6, cy+k*11-1, 12, 2); }
+
+    // ---- labels ----
+    sctx.fillStyle = '#cdd6df'; sctx.font = '12px -apple-system,Segoe UI,sans-serif'; sctx.textAlign='center';
+    sctx.fillText('source', srcX, cy+150);
+    sctx.fillText('sample', ox, oyB+22);
+    sctx.fillText('detector', detX+5, cy-158);
+    sctx.textAlign='left';
+    sctx.fillStyle = '#3fb6c4'; sctx.fillText('×'+M.toFixed(2)+' magnified', ox+14, oyT-8);
+    // penumbra callout
+    const penPx = Math.abs(innerT-outerT);
+    if (penPx > 6){
+      sctx.strokeStyle = 'rgba(240,150,80,0.9)'; sctx.lineWidth = 1;
+      sctx.beginPath(); sctx.moveTo(detX+16, outerT); sctx.lineTo(detX+16, innerT); sctx.stroke();
+      sctx.fillStyle = 'rgba(240,150,80,1)'; sctx.font='11px -apple-system,sans-serif';
+      sctx.fillText('penumbra', detX-64, (outerT+innerT)/2+3);
+    }
+
+    // SOD / SDD dimension line
+    sctx.strokeStyle='rgba(255,255,255,0.18)'; sctx.lineWidth=1;
+    sctx.beginPath(); sctx.moveTo(srcX, H-24); sctx.lineTo(ox, H-24); sctx.stroke();
+    sctx.fillStyle='#8b949e'; sctx.textAlign='center'; sctx.font='11px -apple-system,sans-serif';
+    sctx.fillText(SOD+' cm', (srcX+ox)/2, H-28);
+    sctx.textAlign='left';
+  }
+
+  // ---- readouts ----
+  function updateReadouts(M, blurMM, sigma, doseRel, brightness){
+    document.getElementById('magV').innerHTML = M.toFixed(2)+'<small>×</small>';
+    document.getElementById('blurV').innerHTML = blurMM.toFixed(2)+'<small> mm</small>';
+    document.getElementById('doseV').innerHTML = Math.round(doseRel*100)+'<small>%</small>';
+    const noise = sigma < 18 ? 'Low' : sigma < 34 ? 'Medium' : 'High';
+    document.getElementById('noiseV').textContent = noise;
+
+    // plain-English summary
+    const sharp = blurMM < 0.6 ? 'crisp' : blurMM < 1.8 ? 'a little soft' : 'noticeably blurred';
+    const expo = brightness > 1.35 ? 'over-exposed (washing out)'
+               : brightness > 0.78 ? 'well exposed'
+               : brightness > 0.5  ? 'a bit dark'
+               : 'dark and grainy';
+    const mag = M < 1.3 ? 'near life-size (contact imaging)' : M < 2.5 ? 'modestly magnified' : 'strongly magnified';
+
+    let tip;
+    if (brightness > 1.35) tip = `You're over-exposing — extra dose past this point just burns out detail without helping.`;
+    else if (sigma > 34)   tip = `Noisy: raise exposure/dose to collect more photons (costs dose to the sample), or use a larger focal spot.`;
+    else if (blurMM > 1.6 && M > 2.5) tip = `Classic trade-off: pushing magnification up also enlarged the penumbra, so the image blurred.`;
+    else tip = `Try the presets to feel each trade-off on its own.`;
+
+    document.getElementById('summary').innerHTML =
+      `With a <b>${f.toFixed(1)} mm</b> focal spot, the sample <b>${SOD} cm</b> from the source, and <b>${E.toFixed(1)} mAs</b> exposure: the image is <b>${mag}</b> (×${M.toFixed(2)}), edges look <b>${sharp}</b> (${blurMM.toFixed(2)} mm penumbra), and it's <b>${expo}</b>. ` + tip;
+  }
+
+  // ---- main ----
+  function render(){
+    const M = SDD/SOD;
+    const Ff = (f - fMin)/(fMax - fMin);
+    const sFactor = 0.7 + 0.3*Ff;               // a bigger spot can deliver more flux
+    const Nrel = (E/Eref) * sFactor;            // relative photon count reaching detector
+    const Nphot = 1200 * Nrel;
+    const sigma = 620 / Math.sqrt(Nphot + 40);  // Poisson-like noise ~ 1/sqrt(photons)
+    const brightness = 0.30 + 0.70 * Nrel;      // exposure gain; clips >1 → burn-out
+    const glow = Math.max(0, Math.min(1, Nrel/1.15));
+    const doseRel = E / Eref;                    // delivered dose tracks mAs
+    const blurMM = f * (M - 1);                  // geometric unsharpness (mm at detector)
+    const blurPx = blurMM * dScale;
+
+    fVal.textContent = f.toFixed(1)+' mm';
+    sodVal.textContent = SOD+' cm';
+    eVal.textContent = E.toFixed(1)+' mAs';
+
+    renderProjection(M, brightness, sigma, blurPx);
+    drawSetup(M, glow);
+    updateReadouts(M, blurMM, sigma, doseRel, brightness);
+  }
+
+  fRange.addEventListener('input', e => { f = parseFloat(e.target.value); render(); });
+  sodRange.addEventListener('input', e => { SOD = parseInt(e.target.value); render(); });
+  eRange.addEventListener('input', e => { E = parseFloat(e.target.value); render(); });
+  document.querySelectorAll('.presets button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      f = parseFloat(b.dataset.f); SOD = parseInt(b.dataset.sod); E = parseFloat(b.dataset.e);
+      fRange.value = f; sodRange.value = SOD; eRange.value = E; render();
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
